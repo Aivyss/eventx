@@ -33,8 +33,8 @@ func RegisterEventListener[E any](el EventListener[E]) error {
 	return nil
 }
 
-func RegisterFuncAsEventListener[E any](fn EventFunc[E]) error {
-	return RegisterEventListener(BuildEventListener(fn))
+func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error {
+	return RegisterEventListener(BuildEventListener(trigger))
 }
 
 func Close() {

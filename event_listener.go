@@ -6,14 +6,14 @@ type EventListener[E any] interface {
 
 type EventFunc[E any] func(entity E) error
 
-func BuildEventListener[E any](trigger EventFunc[E]) EventListener[E] {
+func BuildEventListener[E any](trigger func(entity E) error) EventListener[E] {
 	return &defaultEventListener[E]{
 		InnerTrigger: trigger,
 	}
 }
 
 type defaultEventListener[E any] struct {
-	InnerTrigger func(entity E) error
+	InnerTrigger EventFunc[E]
 }
 
 func (l *defaultEventListener[E]) Trigger(entity E) error {

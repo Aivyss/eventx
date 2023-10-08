@@ -61,8 +61,8 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 					case <-innerContext.Done():
 						fmt.Println("[eventx] End of event process pool...")
 						return
-					default:
-						(<-ctx.eventChannel)()
+					case runner := <-ctx.eventChannel:
+						runner()
 					}
 				}
 			}(ctx.innerContext)
