@@ -4,7 +4,9 @@ type EventListener[E any] interface {
 	Trigger(entity E) error
 }
 
-func BuildEventListener[E any](trigger func(entity E) error) EventListener[E] {
+type EventFunc[E any] func(entity E) error
+
+func BuildEventListener[E any](trigger EventFunc[E]) EventListener[E] {
 	return &defaultEventListener[E]{
 		InnerTrigger: trigger,
 	}

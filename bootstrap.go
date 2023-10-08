@@ -33,6 +33,14 @@ func RegisterEventListener[E any](el EventListener[E]) error {
 	return nil
 }
 
+func RegisterFuncAsEventListener[E any](fn EventFunc[E]) error {
+	return RegisterEventListener(BuildEventListener(fn))
+}
+
+func Close() {
+	appContext.Close()
+}
+
 func Trigger[E any](elem E) error {
 	typeVal := reflect.TypeOf(elem)
 	listener, ok := appContext.GetEventListener(typeVal)
