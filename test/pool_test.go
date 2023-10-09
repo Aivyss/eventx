@@ -3,6 +3,7 @@ package test
 import (
 	"fmt"
 	"github.com/aivyss/eventx"
+	"github.com/aivyss/eventx/entity"
 	"runtime"
 	"sync"
 	"testing"
@@ -72,7 +73,7 @@ func TestPool3(t *testing.T) {
 		eventx.RunDefaultApplication()
 		defer eventx.Close()
 
-		listener := eventx.BuildEventListener(func(entity TestEventEntity) error {
+		listener := entity.BuildEventListener(func(entity TestEventEntity) error {
 			time.Sleep(1 * time.Millisecond)
 			mutex.Lock()
 			listener3Count += 1

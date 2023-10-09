@@ -1,7 +1,7 @@
 package eventx
 
 import (
-	"github.com/aivyss/eventx/entity"
+	"github.com/aivyss/eventx/context"
 )
 
-var appContext *entity.ApplicationContext
+var appContext *context.ApplicationContext

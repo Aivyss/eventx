@@ -1,13 +1,14 @@
 package eventx
 
 import (
+	"github.com/aivyss/eventx/context"
 	"github.com/aivyss/eventx/entity"
 	"github.com/aivyss/eventx/errors"
 	"reflect"
 )
 
 func RunDefaultApplication() {
-	RunApplication(entity.DefaultEventChannelBufferSize, entity.DefaultEventProcessPoolSize, entity.DefaultMultiEventMode)
+	RunApplication(context.DefaultEventChannelBufferSize, context.DefaultEventProcessPoolSize, context.DefaultMultiEventMode)
 }
 
 func RunApplication(eventChannelBufferSize int, eventProcessPoolSize int, multiEventMode bool) {
@@ -15,11 +16,11 @@ func RunApplication(eventChannelBufferSize int, eventProcessPoolSize int, multiE
 		appContext.Close()
 	}
 
-	appContext = entity.NewApplicationContext(eventChannelBufferSize, eventProcessPoolSize, multiEventMode)
+	appContext = context.NewApplicationContext(eventChannelBufferSize, eventProcessPoolSize, multiEventMode)
 	appContext.ConsumeEventRunner()
 }
 
-func RegisterEventListener[E any](el EventListener[E]) error {
+func RegisterEventListener[E any](el entity.EventListener[E]) error {
 	var e E
 	typeVal := reflect.TypeOf(e)
 
@@ -34,7 +35,7 @@ func RegisterEventListener[E any](el EventListener[E]) error {
 }
 
 func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error {
-	return RegisterEventListener(BuildEventListener(trigger))
+	return RegisterEventListener(entity.BuildEventListener(trigger))
 }
 
 func Close() {
@@ -48,24 +49,13 @@ func Trigger[E any](elem E) error {
 		return errors.NotFoundEventListenerErr
 	}
 
-	var specifiedListeners []EventListener[E]
 	for _, listener := range listeners {
-		specifiedListener, ok := listener.(EventListener[E])
+		specifiedListener, ok := listener.(entity.EventListener[E])
 		if !ok {
 			return errors.NotFoundEventListenerErr
 		}
 
-		specifiedListeners = append(specifiedListeners, specifiedListener)
-	}
-
-	generateEventRunner := func(elem E, listener EventListener[E]) entity.EventRunner {
-		return func() {
-			_ = listener.Trigger(elem)
-		}
-	}
-
-	for _, listener := range specifiedListeners {
-		appContext.QueueEventRunner(generateEventRunner(elem, listener))
+		appContext.QueueEventSet(entity.NewEventSet(specifiedListener, elem))
 	}
 
 	return nil

@@ -1,4 +1,4 @@
-package eventx
+package entity
 
 type EventListener[E any] interface {
 	Trigger(entity E) error
