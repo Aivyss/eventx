@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type Listener3Elem int
+type TestEventEntity int
 
 func TestPool(t *testing.T) {
 	t.Run("RegisterFuncAsEventListener", func(t *testing.T) {
@@ -20,7 +20,7 @@ func TestPool(t *testing.T) {
 		eventx.RunDefaultApplication()
 		defer eventx.Close()
 
-		_ = eventx.RegisterFuncAsEventListener(func(entity Listener3Elem) error {
+		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
 			mutex.Lock()
 			listener3Count += 1
 			mutex.Unlock()
@@ -29,7 +29,7 @@ func TestPool(t *testing.T) {
 		})
 
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(Listener3Elem(i))
+			_ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		for {
@@ -49,7 +49,7 @@ func TestPPool2(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 		defaultGoroutineNum := runtime.NumGoroutine()
 
-		eventx.RunApplication(3, 15)
+		eventx.RunApplication(3, 15, true)
 
 		for {
 			time.Sleep(500 * time.Millisecond)
@@ -72,7 +72,7 @@ func TestPool3(t *testing.T) {
 		eventx.RunDefaultApplication()
 		defer eventx.Close()
 
-		listener := eventx.BuildEventListener(func(entity Listener3Elem) error {
+		listener := eventx.BuildEventListener(func(entity TestEventEntity) error {
 			time.Sleep(1 * time.Millisecond)
 			mutex.Lock()
 			listener3Count += 1
@@ -84,7 +84,7 @@ func TestPool3(t *testing.T) {
 		_ = eventx.RegisterEventListener(listener)
 
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(Listener3Elem(i))
+			_ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		for {
@@ -106,7 +106,7 @@ func TestPool4(t *testing.T) {
 		eventx.RunDefaultApplication()
 		defer eventx.Close()
 
-		_ = eventx.RegisterFuncAsEventListener(func(entity Listener3Elem) error {
+		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
 			mutex.Lock()
 			listener3Count += 1
 			mutex.Unlock()
@@ -120,7 +120,7 @@ func TestPool4(t *testing.T) {
 			return nil
 		})
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(Listener3Elem(i))
+			_ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		time.Sleep(100 * time.Millisecond)
@@ -134,6 +134,61 @@ func TestPool4(t *testing.T) {
 
 			if flag {
 				fmt.Println("[success] async test")
+				break
+			}
+		}
+	})
+}
+
+func TestPool5(t *testing.T) {
+	var mutex sync.Mutex
+	event1Cnt := 0
+	event2Cnt := 0
+	event3Cnt := 0
+	eventTriggeredCnt := 0
+	loopCnt := 100
+
+	t.Run("multi-test", func(t *testing.T) {
+		eventx.RunDefaultApplication()
+
+		type TestEventEntity2 int
+		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity2) error {
+			mutex.Lock()
+			event3Cnt += 1
+			mutex.Unlock()
+			time.Sleep(5 * time.Millisecond)
+
+			return nil
+		})
+		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
+			mutex.Lock()
+			eventTriggeredCnt += 1
+			event1Cnt += 1
+			mutex.Unlock()
+			time.Sleep(20 * time.Millisecond)
+
+			return nil
+		})
+		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
+			mutex.Lock()
+			eventTriggeredCnt += 1
+			event2Cnt += 1
+			mutex.Unlock()
+			time.Sleep(20 * time.Millisecond)
+
+			return nil
+		})
+
+		for i := 0; i < loopCnt; i++ {
+			_ = eventx.Trigger(TestEventEntity(i))
+			_ = eventx.Trigger(TestEventEntity2(i))
+		}
+
+		for {
+			time.Sleep(500 * time.Millisecond)
+
+			if event1Cnt == loopCnt && event2Cnt == loopCnt && eventTriggeredCnt == loopCnt*2 && event3Cnt == loopCnt {
+				fmt.Println("[success] multi-test")
 				break
 			}
 		}

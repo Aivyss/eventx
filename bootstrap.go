@@ -7,15 +7,15 @@ import (
 )
 
 func RunDefaultApplication() {
-	RunApplication(entity.DefaultEventChannelBufferSize, entity.DefaultEventProcessPoolSize)
+	RunApplication(entity.DefaultEventChannelBufferSize, entity.DefaultEventProcessPoolSize, entity.DefaultMultiEventMode)
 }
 
-func RunApplication(eventChannelBufferSize int, eventProcessPoolSize int) {
+func RunApplication(eventChannelBufferSize int, eventProcessPoolSize int, multiEventMode bool) {
 	if appContext != nil {
 		appContext.Close()
 	}
 
-	appContext = entity.NewApplicationContext(eventChannelBufferSize, eventProcessPoolSize)
+	appContext = entity.NewApplicationContext(eventChannelBufferSize, eventProcessPoolSize, multiEventMode)
 	appContext.ConsumeEventRunner()
 }
 
@@ -23,8 +23,8 @@ func RegisterEventListener[E any](el EventListener[E]) error {
 	var e E
 	typeVal := reflect.TypeOf(e)
 
-	_, ok := appContext.GetEventListener(typeVal)
-	if ok {
+	listeners := appContext.GetEventListener(typeVal)
+	if !appContext.IsMultiMode() && len(listeners) > 0 {
 		return errors.AlreadyRegisteredErr
 	}
 
@@ -43,20 +43,30 @@ func Close() {
 
 func Trigger[E any](elem E) error {
 	typeVal := reflect.TypeOf(elem)
-	listener, ok := appContext.GetEventListener(typeVal)
-	if !ok {
+	listeners := appContext.GetEventListener(typeVal)
+	if len(listeners) == 0 {
 		return errors.NotFoundEventListenerErr
 	}
 
-	specifiedListener, ok := listener.(EventListener[E])
-	if !ok {
-		return errors.NotFoundEventListenerErr
+	var specifiedListeners []EventListener[E]
+	for _, listener := range listeners {
+		specifiedListener, ok := listener.(EventListener[E])
+		if !ok {
+			return errors.NotFoundEventListenerErr
+		}
+
+		specifiedListeners = append(specifiedListeners, specifiedListener)
 	}
 
-	runner := func() {
-		_ = specifiedListener.Trigger(elem)
+	generateEventRunner := func(elem E, listener EventListener[E]) entity.EventRunner {
+		return func() {
+			_ = listener.Trigger(elem)
+		}
 	}
-	appContext.QueueEventRunner(runner)
+
+	for _, listener := range specifiedListeners {
+		appContext.QueueEventRunner(generateEventRunner(elem, listener))
+	}
 
 	return nil
 }

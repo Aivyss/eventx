@@ -3,33 +3,39 @@ package entity
 import (
 	"context"
 	"fmt"
+	"github.com/aivyss/eventx/common"
 	"reflect"
 	"sync"
 )
 
-const DefaultEventChannelBufferSize = 5
-const DefaultEventProcessPoolSize = 10
+const (
+	DefaultEventChannelBufferSize = 5
+	DefaultEventProcessPoolSize   = 10
+	DefaultMultiEventMode         = true
+)
 
 type ApplicationContext struct {
 	once                   sync.Once
 	innerContext           context.Context
 	innerContextCancel     context.CancelFunc
+	multiEventMode         bool
 	eventChannel           chan EventRunner
 	eventChannelBufferSize int
 	eventProcessPoolSize   int
-	listenerMap            map[reflect.Type]any
+	listenerdMap           common.MultiMap[reflect.Type, any]
 }
 
-func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int) *ApplicationContext {
+func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int, multiEventMode bool) *ApplicationContext {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &ApplicationContext{
 		innerContext:           ctx,
 		innerContextCancel:     cancel,
+		multiEventMode:         multiEventMode,
 		eventChannel:           make(chan EventRunner, eventChannelBufferSize),
 		eventChannelBufferSize: eventChannelBufferSize,
 		eventProcessPoolSize:   eventProcessPoolSize,
-		listenerMap:            map[reflect.Type]any{},
+		listenerdMap:           common.NewMultiMap[reflect.Type, any](),
 	}
 }
 
@@ -41,7 +47,8 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 	ctx.once.Do(func() {
 		setting := "default"
 		if ctx.eventChannelBufferSize != DefaultEventChannelBufferSize ||
-			ctx.eventProcessPoolSize != DefaultEventProcessPoolSize {
+			ctx.eventProcessPoolSize != DefaultEventProcessPoolSize ||
+			ctx.multiEventMode {
 			setting = "customized"
 		}
 		fmt.Println(fmt.Sprintf(
@@ -70,16 +77,19 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 	})
 }
 
-func (ctx *ApplicationContext) GetEventListener(typeVal reflect.Type) (any, bool) {
-	unspecifiedEventListener, ok := ctx.listenerMap[typeVal]
-
-	return unspecifiedEventListener, ok
+func (ctx *ApplicationContext) GetEventListener(typeVal reflect.Type) []any {
+	listeners := ctx.listenerdMap.Get(typeVal)
+	return listeners
 }
 
 func (ctx *ApplicationContext) RegisterEventListener(typeVal reflect.Type, eventListener any) {
-	ctx.listenerMap[typeVal] = eventListener
+	ctx.listenerdMap.Put(typeVal, eventListener)
 }
 
 func (ctx *ApplicationContext) Close() {
 	ctx.innerContextCancel()
+}
+
+func (ctx *ApplicationContext) IsMultiMode() bool {
+	return ctx.multiEventMode
 }
