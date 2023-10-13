@@ -56,11 +56,11 @@ func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error
   <br>
 
 ```go
-func BuildEventListenerWithCallback[E any](
-	trigger func(entity E) error,
-	then func(entity E),
-	catch func(err error),
-) EventListener[E]
+func RegisterFuncsAsEventListener[E any](
+    trigger func(entity E) error,
+    then func(entity E),
+    catch func(err error),
+) error
 ```
 - This function allows you to register subsequent processing procedures after the event is triggered.
 - When the event trigger processing is successful, `then` will be executed.

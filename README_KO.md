@@ -63,11 +63,11 @@ func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error
 <br>
 
 ```go
-func BuildEventListenerWithCallback[E any](
-	trigger func(entity E) error,
-	then func(entity E),
-	catch func(err error),
-) EventListener[E]
+func RegisterFuncsAsEventListener[E any](
+    trigger func(entity E) error,
+    then func(entity E),
+    catch func(err error),
+) error
 ```
 
 - 이 함수는 이벤트가 트리거 후의 후속 처리 절차도 함께 등록할 수 있습니다.
