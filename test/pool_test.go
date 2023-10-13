@@ -207,7 +207,7 @@ func TestCallbackPool(t *testing.T) {
 		eventx.RunDefaultApplication()
 		defer eventx.Close()
 
-		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+		eventx.RegisterFuncsAsEventListener(
 			func(entity TestEventEntity) error {
 				return errors.New("test_error =" + fmt.Sprint(entity))
 			},
@@ -224,7 +224,7 @@ func TestCallbackPool(t *testing.T) {
 				mutex.Unlock()
 			},
 		)
-		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+		eventx.RegisterFuncsAsEventListener(
 			func(entity TestEventEntity) error {
 				return nil
 			},
@@ -252,7 +252,7 @@ func TestCallbackPool(t *testing.T) {
 				mutex.Unlock()
 			},
 		)
-		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+		eventx.RegisterFuncsAsEventListener(
 			func(entity TestEventEntity) error {
 				return nil
 			},

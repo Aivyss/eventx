@@ -42,6 +42,34 @@ func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error {
 	return RegisterEventListener(entity.BuildEventListener(trigger))
 }
 
+func RegisterFuncThenAsEventListener[E any](
+	trigger func(entity E) error,
+	then func(entity E),
+) error {
+	if trigger == nil {
+		return errors.NoTriggerFuncErr
+	}
+	if then == nil {
+		return RegisterFuncAsEventListener(trigger)
+	}
+
+	return RegisterEventListener(entity.BuildSuccessEventListener(trigger, then))
+}
+
+func RegisterFuncCatchAsEventListener[E any](
+	trigger func(entity E) error,
+	catch func(err error),
+) error {
+	if trigger == nil {
+		return errors.NoTriggerFuncErr
+	}
+	if catch == nil {
+		return RegisterFuncAsEventListener(trigger)
+	}
+
+	return RegisterEventListener(entity.BuildCatchErrEventListener(trigger, catch))
+}
+
 func RegisterFuncsAsEventListener[E any](
 	trigger func(entity E) error,
 	then func(entity E),
@@ -54,10 +82,10 @@ func RegisterFuncsAsEventListener[E any](
 		return RegisterFuncAsEventListener(trigger)
 	}
 	if then == nil {
-		then = func(entity E) {}
+		return RegisterFuncCatchAsEventListener(trigger, catch)
 	}
 	if catch == nil {
-		catch = func(err error) {}
+		return RegisterFuncThenAsEventListener(trigger, then)
 	}
 
 	return RegisterEventListener(entity.BuildEventListenerWithCallback(

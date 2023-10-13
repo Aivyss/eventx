@@ -19,12 +19,23 @@ func NewEventSet[E any](listener EventListener[E], entity E) EventSet {
 func (s *EventSetImpl[E]) Runner() func() {
 	err := s.EventListener.Trigger(s.Entity)
 	if err != nil {
+		el, ok := s.EventListener.(CatchErrEventListener[E])
+
+		if ok {
+			return func() {
+				el.Catch(err)
+			}
+		}
+
+		return nil
+	}
+
+	el, ok := s.EventListener.(SuccessEventListener[E])
+	if ok {
 		return func() {
-			s.EventListener.Catch(err)
+			el.Then(s.Entity)
 		}
 	}
 
-	return func() {
-		s.EventListener.Then(s.Entity)
-	}
+	return nil
 }

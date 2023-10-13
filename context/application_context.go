@@ -99,7 +99,9 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 						break selectLoop
 					case runner := <-ctx.eventChannel.Channel:
 						afterRunner := runner()
-						ctx.eventChannel.AfterChannel <- afterRunner
+						if afterRunner != nil {
+							ctx.eventChannel.AfterChannel <- afterRunner
+						}
 					}
 				}
 
