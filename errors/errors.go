@@ -13,6 +13,7 @@ type Error struct {
 const (
 	AlreadyRegistered ErrorID = iota
 	NotFoundEventListener
+	NoTriggerFunc
 )
 
 var (
@@ -23,5 +24,9 @@ var (
 	NotFoundEventListenerErr = Error{
 		error:   errors.New("NotFoundEventListener"),
 		ErrorID: NotFoundEventListener,
+	}
+	NoTriggerFuncErr = Error{
+		error:   errors.New("NoTriggerFunc"),
+		ErrorID: NoTriggerFunc,
 	}
 )

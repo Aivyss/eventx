@@ -32,6 +32,7 @@ func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int,
 		innerContextCancel: cancel,
 		eventChannel: &EventChannel{
 			Channel:           make(chan entity.EventRunner, eventChannelBufferSize),
+			AfterChannel:      make(chan entity.EventAfterRunner, eventChannelBufferSize),
 			ChannelBufferSize: eventChannelBufferSize,
 			ProcessPoolSize:   eventProcessPoolSize,
 		},
@@ -75,29 +76,48 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 
 		for i := 0; i < ctx.DispensePoolSize; i++ {
 			go func(innerContext context.Context) {
+			selectLoop:
 				for {
 					select {
 					case <-innerContext.Done():
-						fmt.Println("[eventx] End of event listener dispense pool...")
-						return
+						break selectLoop
 					case eventSet := <-ctx.DispenseChannel:
 						ctx.eventChannel.Channel <- eventSet.Runner
 					}
 				}
+
+				fmt.Println("[eventx] End of event listener dispense pool...")
 			}(ctx.innerContext)
 		}
 
 		for i := 0; i < ctx.eventChannel.ProcessPoolSize; i++ {
 			go func(innerContext context.Context) {
+			selectLoop:
 				for {
 					select {
 					case <-innerContext.Done():
-						fmt.Println("[eventx] End of event process pool...")
-						return
+						break selectLoop
 					case runner := <-ctx.eventChannel.Channel:
+						afterRunner := runner()
+						ctx.eventChannel.AfterChannel <- afterRunner
+					}
+				}
+
+				fmt.Println("[eventx] End of event process pool...")
+			}(ctx.innerContext)
+
+			go func(innerContext context.Context) {
+			selectLoop:
+				for {
+					select {
+					case <-innerContext.Done():
+						break selectLoop
+					case runner := <-ctx.eventChannel.AfterChannel:
 						runner()
 					}
 				}
+
+				fmt.Println("[eventx] End of after event process pool...")
 			}(ctx.innerContext)
 		}
 	})

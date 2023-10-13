@@ -1,3 +1,4 @@
 package entity
 
-type EventRunner func()
+type EventRunner func() func()
+type EventAfterRunner func()

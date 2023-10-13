@@ -1,7 +1,7 @@
 package entity
 
 type EventSet interface {
-	Runner()
+	Runner() func()
 }
 
 type EventSetImpl[E any] struct {
@@ -16,6 +16,15 @@ func NewEventSet[E any](listener EventListener[E], entity E) EventSet {
 	}
 }
 
-func (s *EventSetImpl[E]) Runner() {
-	_ = s.EventListener.Trigger(s.Entity)
+func (s *EventSetImpl[E]) Runner() func() {
+	err := s.EventListener.Trigger(s.Entity)
+	if err != nil {
+		return func() {
+			s.EventListener.Catch(err)
+		}
+	}
+
+	return func() {
+		s.EventListener.Then(s.Entity)
+	}
 }

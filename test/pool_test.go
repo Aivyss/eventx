@@ -1,6 +1,7 @@
 package test
 
 import (
+	"errors"
 	"fmt"
 	"github.com/aivyss/eventx"
 	"github.com/aivyss/eventx/entity"
@@ -51,11 +52,12 @@ func TestPPool2(t *testing.T) {
 		defaultGoroutineNum := runtime.NumGoroutine()
 
 		eventx.RunApplication(3, 15, true)
+		defer eventx.Close()
 
 		for {
 			time.Sleep(500 * time.Millisecond)
 
-			if defaultGoroutineNum+5 == runtime.NumGoroutine() {
+			if defaultGoroutineNum+10 == runtime.NumGoroutine() {
 				fmt.Println("[success] regenerate application context")
 				eventx.Close()
 				break
@@ -151,6 +153,7 @@ func TestPool5(t *testing.T) {
 
 	t.Run("multi-test", func(t *testing.T) {
 		eventx.RunDefaultApplication()
+		defer eventx.Close()
 
 		type TestEventEntity2 int
 		_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity2) error {
@@ -190,6 +193,86 @@ func TestPool5(t *testing.T) {
 
 			if event1Cnt == loopCnt && event2Cnt == loopCnt && eventTriggeredCnt == loopCnt*2 && event3Cnt == loopCnt {
 				fmt.Println("[success] multi-test")
+				break
+			}
+		}
+	})
+}
+
+func TestCallbackPool(t *testing.T) {
+	t.Run("callback test", func(t *testing.T) {
+		var mutex sync.Mutex
+		listener3Count := 0
+		loopCnt := 10
+		eventx.RunDefaultApplication()
+		defer eventx.Close()
+
+		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+			func(entity TestEventEntity) error {
+				return errors.New("test_error =" + fmt.Sprint(entity))
+			},
+			func(entity TestEventEntity) {
+				panic("DO NOT RUN")
+			},
+			func(err error) {
+				if err == nil {
+					panic("err is nil")
+				}
+
+				mutex.Lock()
+				listener3Count += 1
+				mutex.Unlock()
+			},
+		)
+		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+			func(entity TestEventEntity) error {
+				return nil
+			},
+			func(entity TestEventEntity) {
+				mutex.Lock()
+				listener3Count += 1
+				mutex.Unlock()
+			},
+			func(err error) {
+				panic("DO NOT RUN")
+			},
+		)
+		eventx.RegisterFuncsAsEventListener(
+			func(entity TestEventEntity) error {
+				return errors.New("test_error =" + fmt.Sprint(entity))
+			},
+			nil,
+			func(err error) {
+				if err == nil {
+					panic("err is nil")
+				}
+
+				mutex.Lock()
+				listener3Count += 1
+				mutex.Unlock()
+			},
+		)
+		eventx.RegisterFuncsAsEventListener[TestEventEntity](
+			func(entity TestEventEntity) error {
+				return nil
+			},
+			func(entity TestEventEntity) {
+				mutex.Lock()
+				listener3Count += 1
+				mutex.Unlock()
+			},
+			nil,
+		)
+
+		for i := 0; i < loopCnt; i++ {
+			eventx.Trigger(TestEventEntity(i))
+		}
+
+		for {
+			time.Sleep(500 * time.Millisecond)
+
+			if listener3Count == loopCnt*4 {
+				fmt.Println("[success] callback test")
 				break
 			}
 		}

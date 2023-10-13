@@ -6,4 +6,5 @@ type EventChannel struct {
 	ChannelBufferSize int
 	ProcessPoolSize   int
 	Channel           chan entity.EventRunner
+	AfterChannel      chan entity.EventAfterRunner
 }
