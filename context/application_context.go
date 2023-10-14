@@ -15,15 +15,44 @@ const (
 	DefaultMultiEventMode         = true
 )
 
+// ApplicationContext
+//
+// The context needed to operate the entirety of `eventx` application.
+//
+// There should be only one variable declared globally in the application (eventx/global_variables.go/appContext).
+// (For internal usage within `eventx`)
+//
+// Users can create ApplicationContext as well with ApplicationContext{} and NewApplicationContext function,
+// but cannot assign values to its internal fields and cannot use it for `eventx` application purposes.
 type ApplicationContext struct {
-	once                sync.Once
-	innerContext        context.Context
-	innerContextCancel  context.CancelFunc
-	eventChannel        *EventChannel
+	// once
+	//
+	// Used for the sole purpose of running the ConsumeEventRunner method only once.
+	once sync.Once
+	// innerContext
+	//
+	// The context of the event pool operated within the ApplicationContext.
+	//
+	// eventx.Close => It ends when the Close method is executed.
+	innerContext context.Context
+	// innerContextCancel
+	//
+	// Ends the innerContext, causing the event pool to terminate.
+	innerContextCancel context.CancelFunc
+	// eventChannel manages the channels used for executing events.
+	eventChannel *EventChannel
+	// eventListenerConfig manages the state of entity.EventListener.
 	eventListenerConfig *EventListenerConfig
-	*EventListenerDispenseChannel
+	// EventListenerDispenseChannel is an intermediate layer for event listener processing distribution.
+	eventListenerDispenseChannel *EventListenerDispenseChannel
 }
 
+// NewApplicationContext
+//
+// Creates an ApplicationContext.
+//
+// Users can create ApplicationContext as well with ApplicationContext{} and the NewApplicationContext function,
+// but cannot assign values to its internal fields and cannot use it for `eventx` application purposes.
 func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int, multiEventMode bool) *ApplicationContext {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -40,7 +69,7 @@ func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int,
 			MultiEventMode: multiEventMode,
 			ListenerMap:    common.NewMultiMap[reflect.Type, any](),
 		},
-		EventListenerDispenseChannel: &EventListenerDispenseChannel{
+		eventListenerDispenseChannel: &EventListenerDispenseChannel{
 			DispenseBufferSize: 1,
 			DispensePoolSize:   3,
 			DispenseChannel:    make(chan entity.EventSet, 1),
@@ -48,14 +77,25 @@ func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int,
 	}
 }
 
+// QueueEventRunner
+//
+// Takes a function literal(`func() func()`) that contains event execution content and sends it to the event processing channel.
 func (ctx *ApplicationContext) QueueEventRunner(runner entity.EventRunner) {
 	ctx.eventChannel.Channel <- runner
 }
 
+// QueueEventSet
+//
+// Sends an entity.EventSet with the entity publishing events
+// and the entity.EventListener that receives and processes those events to the event distribution channel.
 func (ctx *ApplicationContext) QueueEventSet(set entity.EventSet) {
-	ctx.DispenseChannel <- set
+	ctx.eventListenerDispenseChannel.DispenseChannel <- set
 }
 
+// ConsumeEventRunner
+//
+// Creates an event pool that processes events received from the channel.
+// Event pools asynchronously process events.
 func (ctx *ApplicationContext) ConsumeEventRunner() {
 	ctx.once.Do(func() {
 		setting := "default"
@@ -74,14 +114,14 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 			ctx.eventChannel.ProcessPoolSize,
 		))
 
-		for i := 0; i < ctx.DispensePoolSize; i++ {
+		for i := 0; i < ctx.eventListenerDispenseChannel.DispensePoolSize; i++ {
 			go func(innerContext context.Context) {
 			selectLoop:
 				for {
 					select {
 					case <-innerContext.Done():
 						break selectLoop
-					case eventSet := <-ctx.DispenseChannel:
+					case eventSet := <-ctx.eventListenerDispenseChannel.DispenseChannel:
 						ctx.eventChannel.Channel <- eventSet.Runner
 					}
 				}
@@ -125,19 +165,34 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 	})
 }
 
+// GetEventListener
+//
+// Returns the event listeners corresponding to the entity publishing the events.
+// Since it can only return []any, type checking is required on the caller's side.
 func (ctx *ApplicationContext) GetEventListener(typeVal reflect.Type) []any {
 	listeners := ctx.eventListenerConfig.ListenerMap.Get(typeVal)
 	return listeners
 }
 
+// RegisterEventListener
+//
+// Registers an event listener in the context.
 func (ctx *ApplicationContext) RegisterEventListener(typeVal reflect.Type, eventListener any) {
 	ctx.eventListenerConfig.ListenerMap.Put(typeVal, eventListener)
 }
 
+// Close
+//
+// Terminates the context, causing the event pool to end.
+//
+// Users are encouraged to execute this method with `defer eventx.Close` to ensure that `eventx` safely ends before their application terminates.
 func (ctx *ApplicationContext) Close() {
 	ctx.innerContextCancel()
 }
 
+// IsMultiMode
+//
+// Returns whether `eventx` can register and handle multiple event listeners for a single event entity.
 func (ctx *ApplicationContext) IsMultiMode() bool {
 	return ctx.eventListenerConfig.MultiEventMode
 }
