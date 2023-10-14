@@ -1,3 +1,19 @@
+# Index
+- [Installation](#installation)
+- [Overview](#overview)
+- [Running the Application](#running-the-application)
+- [EventListener](#eventlistener)
+  * [Interface Description](#interface-description)
+  * [Embedded Composition of EventListener[E]](#embedded-composition-of-eventlistenere)
+  * [Event Registration](#event-registration)
+  * [Event Triggering](#event-triggering)
+- [Application Termination](#application-termination)
+
+# Installation
+```sh
+go get github.com/aivyss/eventx@v1.2.1
+```
+
 # Overview
 - eventx is an application for handling asynchronous events.
 - Advantages
@@ -6,6 +22,7 @@
 
 <br>
 <br>
+
 
 # Running the Application
 - The application does not automatically run. You must execute the run function at least once when starting your application.
@@ -23,6 +40,7 @@ type EventListener[E any] interface {
 	Trigger(entity E) error
 }
 ```
+
 ## Interface Description
 - `E` represents the target that triggers the event. It should contain the necessary information for the event to be executed.
   - When you pass a E structure to the eventx application, the event is triggered.
@@ -31,11 +49,50 @@ type EventListener[E any] interface {
 - You need to implement and register this interface.
 - If implementing the interface is cumbersome, you can use the following method:
     ```go
-    func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error
+  func RegisterFunAsEventListener[E any](trigger func(entity E) error) error
+  
+  func RegisterFuncThenAsEventListener[E any](
+      trigger func(entity E) error,
+      then func(entity E),
+  ) error
+  
+  func RegisterFuncCatchAsEventListener[E any](
+      trigger func(entity E) error,
+      catch func(err error),
+  ) error
+
+  func RegisterFuncsAsEventListener[E any](
+      trigger func(entity E) error,
+      then func(entity E),
+      catch func(err error),
+  ) error
     ```
   - You only need to write a lambda that will operate when the event is triggered.
     <br>
     <br>
+
+## Embedded Composition of EventListener[E]
+```go
+type CatchErrEventListener[E any] interface {
+	EventListener[E]
+	Catch(err error)
+}
+
+type SuccessEventListener[E any] interface {
+	EventListener[E]
+	Then(entity E)
+}
+
+type CallbackEventListener[E any] interface {
+	EventListener[E]
+	SuccessEventListener[E]
+	CatchErrEventListener[E]
+}
+```
+- After an event is executed, you can implement an event listener that includes methods to process subsequent actions based on the execution result.
+
+<br>
+<br>
 
 ## Event Registration
 ```go
@@ -43,7 +100,7 @@ func RegisterEventListener[E any](el EventListener[E]) error
 ```
 - This is the function you should use to register events.
 - Event listeners that are not registered with this function will not be triggered.
-
+- The convenience `Register` functions to be mentioned next all call this function internally.
 <br>
 <br>
 
@@ -56,6 +113,16 @@ func RegisterFuncAsEventListener[E any](trigger func(entity E) error) error
   <br>
 
 ```go
+func RegisterFuncCatchAsEventListener[E any](
+    trigger func(entity E) error,
+    catch func(err error),
+) error
+
+func RegisterFuncThenAsEventListener[E any](
+    trigger func(entity E) error,
+    then func(entity E),
+) error
+
 func RegisterFuncsAsEventListener[E any](
     trigger func(entity E) error,
     then func(entity E),
@@ -66,6 +133,7 @@ func RegisterFuncsAsEventListener[E any](
 - When the event trigger processing is successful, `then` will be executed.
 - When the event trigger processing fails, `catch` will be executed.
 - Just like events, subsequent processing is also managed entirely asynchronously.
+- It is recommended for use when you do not need to maintain event listeners as explicit separate code or variables.
 
 <br>
 <br>
