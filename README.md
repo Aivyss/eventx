@@ -6,12 +6,13 @@
   * [Interface Description](#interface-description)
   * [Embedded Composition of EventListener[E]](#embedded-composition-of-eventlistenere)
   * [Event Registration](#event-registration)
-  * [Event Triggering](#event-triggering)
+- [Event Triggering](#event-triggering)
+- [entity.EventContext](#entityeventcontext)
 - [Application Termination](#application-termination)
 
 # Installation
 ```sh
-go get github.com/aivyss/eventx@v1.2.1
+go get github.com/aivyss/eventx@v1.3.0
 ```
 
 # Overview
@@ -138,13 +139,26 @@ func RegisterFuncsAsEventListener[E any](
 <br>
 <br>
 
-## Event Triggering
+# Event Triggering
 ```go
-func Trigger[E any](elem E) error
+func Trigger[E any](elem E) ([]entity.EventContext, error)
 ```
 - This is the function you should use to trigger events.
 - Pass the target (elem) you want to trigger the event to the eventx application.
 - The passed target is asynchronously triggered and processed.
+- With `entity.EventContext`, you can track the progress of events and also stop them before execution.
+
+# `entity.EventContext`
+```go
+type EventContext interface {
+    IsRunnable() bool
+    Cancel() bool
+    IsDone() bool
+}
+```
+- `IsRunnable`: Returns whether the event is executable by `eventx`.
+- `IsDone`: Returns whether the event has already been executed.
+- `Cancel`: If the event has not been executed yet, you can cancel the event publication.
 
 # Application Termination
 ```go

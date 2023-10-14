@@ -6,12 +6,13 @@
   * [인터페이스 설명](#인터페이스-설명)
   * [`EventListener[E]`의 임베디드 컴포지션](#eventlistenere의-임베디드-컴포지션)
   * [이벤트 등록](#이벤트-등록)
-  * [이벤트 triggering](#이벤트-triggering)
+- [이벤트 triggering](#이벤트-triggering)
+- [entity.EventContext](#entityeventcontext)
 - [애플리케이션의 종료](#애플리케이션의-종료)
 
 # Installation
 ```sh
-go get github.com/aivyss/eventx@v1.2.1
+go get github.com/aivyss/eventx@v1.3.0
 ```
 
 # 개요
@@ -140,15 +141,28 @@ func RegisterFuncsAsEventListener[E any](
 - 이벤트와 마찬가지로 후속 처리도 완전 비동기로 관리됩니다.
 - 이벤트리스너를 명시적인 별도의 코드나 변수로 유지시킬 필요가 없을 때, 사용하길 권장됩니다.
 
-## 이벤트 triggering
+# 이벤트 triggering
 
 ```go
-func Trigger[E any](entity E) error
+func Trigger[E any](entity E) ([]entity.EventContext, error)
 ```
 
 - 당신이 이벤트를 트리거 시키기 위해 사용해야할 함수는 단지 이것 뿐입니다.
 - 이벤트를 트리거할 대상(entity)을 eventx 애플리케이션에 전달합니다.
 - 전달된 대상은 비동기적으로 이벤트를 트리거하고 처리됩니다.
+- `entity.EventContext`로 이벤트의 진행상황을 알 수 있으며 이벤트 실행전에 중단할 수도 있습니다.
+
+# `entity.EventContext`
+```go
+type EventContext interface {
+    IsRunnable() bool
+    Cancel() bool
+    IsDone() bool
+}
+```
+- `IsRunnable`: `eventx`가 실행가능한 이벤트인지 여부를 반환합니다.
+- `IsDone`: 이미 실행이 종료된 이벤트인지 여부를 반환합니다.
+- `Cancel`: 실행전 이벤트라면 이벤트를 발행을 취소시킬 수 있습니다.
 
 # 애플리케이션의 종료
 
