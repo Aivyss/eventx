@@ -2,17 +2,20 @@ package entity
 
 type EventSet interface {
 	Runner() func()
+	Context() *EventRunnerContextImpl
 }
 
 type EventSetImpl[E any] struct {
 	EventListener EventListener[E]
 	Entity        E
+	Ctx           *EventRunnerContextImpl
 }
 
 func NewEventSet[E any](listener EventListener[E], entity E) EventSet {
 	return &EventSetImpl[E]{
 		EventListener: listener,
 		Entity:        entity,
+		Ctx:           NewEventRunnerContext(),
 	}
 }
 
@@ -38,4 +41,8 @@ func (s *EventSetImpl[E]) Runner() func() {
 	}
 
 	return nil
+}
+
+func (s *EventSetImpl[E]) Context() *EventRunnerContextImpl {
+	return s.Ctx
 }

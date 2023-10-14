@@ -99,21 +99,24 @@ func Close() {
 	appContext.Close()
 }
 
-func Trigger[E any](elem E) error {
+func Trigger[E any](elem E) ([]entity.EventContext, error) {
 	typeVal := reflect.TypeOf(elem)
 	listeners := appContext.GetEventListener(typeVal)
 	if len(listeners) == 0 {
-		return errors.NotFoundEventListenerErr
+		return nil, errors.NotFoundEventListenerErr
 	}
 
+	var ctxs []entity.EventContext
 	for _, listener := range listeners {
 		specifiedListener, ok := listener.(entity.EventListener[E])
 		if !ok {
-			return errors.NotFoundEventListenerErr
+			return nil, errors.NotFoundEventListenerErr
 		}
 
-		appContext.QueueEventSet(entity.NewEventSet(specifiedListener, elem))
+		set := entity.NewEventSet(specifiedListener, elem)
+		ctxs = append(ctxs, set.Context())
+		appContext.QueueEventSet(set)
 	}
 
-	return nil
+	return ctxs, nil
 }

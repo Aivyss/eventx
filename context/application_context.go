@@ -122,7 +122,9 @@ func (ctx *ApplicationContext) ConsumeEventRunner() {
 					case <-innerContext.Done():
 						break selectLoop
 					case eventSet := <-ctx.eventListenerDispenseChannel.DispenseChannel:
-						ctx.eventChannel.Channel <- eventSet.Runner
+						manageEventRunnerContext(eventSet, func(set entity.EventSet) {
+							ctx.eventChannel.Channel <- set.Runner
+						})
 					}
 				}
 

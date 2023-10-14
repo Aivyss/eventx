@@ -31,7 +31,7 @@ func TestPool(t *testing.T) {
 		})
 
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(TestEventEntity(i))
+			_, _ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		for {
@@ -87,7 +87,7 @@ func TestPool3(t *testing.T) {
 		_ = eventx.RegisterEventListener(listener)
 
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(TestEventEntity(i))
+			_, _ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		for {
@@ -123,7 +123,7 @@ func TestPool4(t *testing.T) {
 			return nil
 		})
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(TestEventEntity(i))
+			_, _ = eventx.Trigger(TestEventEntity(i))
 		}
 
 		time.Sleep(100 * time.Millisecond)
@@ -184,8 +184,8 @@ func TestPool5(t *testing.T) {
 		})
 
 		for i := 0; i < loopCnt; i++ {
-			_ = eventx.Trigger(TestEventEntity(i))
-			_ = eventx.Trigger(TestEventEntity2(i))
+			_, _ = eventx.Trigger(TestEventEntity(i))
+			_, _ = eventx.Trigger(TestEventEntity2(i))
 		}
 
 		for {
@@ -277,4 +277,51 @@ func TestCallbackPool(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestTemp(t *testing.T) {
+	flag := false
+	eventx.RunDefaultApplication()
+	defer eventx.Close()
+
+	_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
+		flag = true
+		return nil
+	})
+
+	eventCtxs, _ := eventx.Trigger(TestEventEntity(1))
+	eventCtx := eventCtxs[0]
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+
+		if flag && !eventCtx.IsRunnable() && eventCtx.IsDone() {
+			fmt.Println("[success] cancel functions - 1")
+			break
+		}
+	}
+}
+
+func TestTemp2(t *testing.T) {
+	flag := false
+	eventx.RunDefaultApplication()
+	defer eventx.Close()
+
+	_ = eventx.RegisterFuncAsEventListener(func(entity TestEventEntity) error {
+		flag = true
+		return nil
+	})
+
+	eventCtxs, _ := eventx.Trigger(TestEventEntity(1))
+	eventCtx := eventCtxs[0]
+	eventCtx.Cancel()
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+
+		if !flag && !eventCtx.IsRunnable() && !eventCtx.IsDone() {
+			fmt.Println("[success] cancel function - 2")
+			break
+		}
+	}
 }
