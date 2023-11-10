@@ -3,8 +3,8 @@ package context
 import (
 	"context"
 	"fmt"
-	"github.com/aivyss/eventx/common"
 	"github.com/aivyss/eventx/entity"
+	"github.com/aivyss/typex"
 	"reflect"
 	"sync"
 )
@@ -67,7 +67,7 @@ func NewApplicationContext(eventChannelBufferSize int, eventProcessPoolSize int,
 		},
 		eventListenerConfig: &EventListenerConfig{
 			MultiEventMode: multiEventMode,
-			ListenerMap:    common.NewMultiMap[reflect.Type, any](),
+			ListenerMap:    typex.NewMultiMap[reflect.Type, any](),
 		},
 		eventListenerDispenseChannel: &EventListenerDispenseChannel{
 			DispenseBufferSize: 1,

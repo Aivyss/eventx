@@ -1,11 +1,11 @@
 package context
 
 import (
-	"github.com/aivyss/eventx/common"
+	"github.com/aivyss/typex"
 	"reflect"
 )
 
 type EventListenerConfig struct {
 	MultiEventMode bool
-	ListenerMap    common.MultiMap[reflect.Type, any]
+	ListenerMap    typex.MultiMap[reflect.Type, any]
 }
